@@ -1,14 +1,27 @@
 #!/bin/bash
 
-[[ -n $1 ]] && what=$1 || what="."
-[[ -n $2 ]] && where=$2 || where="."
-echo Find "'$what' in '$where'"
+EXCLUDE_EXT=".*\.(jpg|png|gif|svg|ttf|eot|woff|bz2|log|idx|mp3|swf)"
 
-for file in $(find $what/* -type f );
+[[ -n "$1" ]] && what=$1  || what="."
+[[ -n "$2" ]] && where=$2 || where="."
 
-do
-	c=$(grep -R $(basename $file) $(find $where/* -type f | egrep -v '\.(jpg|png|gif|svg|ttf|eot|woff|bz2|log|idx|mp3|swf)') | wc -l);
-	f=$(grep -Rl $(basename $file) $(find $where/* -type f | egrep -v '\.(jpg|png|gif|svg|ttf|eot|woff|bz2|log|idx|mp3|swf)'));
+echo -e "Looking for '$what' in '$where'\n"
 
-	[[ $c -gt 0 ]] && echo -e "[+] $file" || echo -e "\x1b[31m[-] $file\x1b[0m";
+IFS_0=$IFS
+IFS=$(echo -e "\x0A")
+
+inc_files=$( find "$what"  -type f | sort )
+src_files=$( find "$where" -type f -regextype posix-egrep -not -regex "$EXCLUDE_EXT" )
+
+echo $inc_files | while read inc_file; do
+        r=0; f=""
+        while read src_file; do
+                if [[ $(grep -r "$(basename $inc_file)" "$src_file") ]]; then
+                        (( r++ ))
+                        f="$f $src_file"
+                fi
+        done < <(echo $src_files)
+        [[ $r -gt 0 ]] && echo -e "\x1b[32m[+] $inc_file\x1b[0m -->$f "  || echo -e "\x1b[31m[-] $inc_file\x1b[0m"
 done
+
+IFS=$IFS_0
